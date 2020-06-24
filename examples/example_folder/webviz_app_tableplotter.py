@@ -21,7 +21,7 @@ import plotly.express as px
 import dash
 import dash_core_components as dcc
 #import webviz_core_components as wcc
-from webviz_core_components import Select, Flexbox
+#from webviz_core_components import Select, Flexbox
 import dash_html_components as html
 from dash.dependencies import Input, Output
 from dash import Dash
@@ -73,14 +73,40 @@ WEBVIZ_STORAGE.storage_folder = path.join(
 WEBVIZ_ASSETS.portable = True
 
 ###########################################
+def argument_modifier(parent_class, argument_name, modifying_function, args, kwargs):
+    """Intelligently modifies input args and kwargs given to a class __init__ function.
+    * parent_class: The parent class to look for wrt. arguments.
+    * argument_name: The name of the argument to (potentially) change
+    * modifying_function: Reference to a function which should take one value. It is
+                          automatically given the current value of the relevant argument
+                          (None if not given), and should return the new modified value.
+    * args, kwargs: The arguments to be changed. 
+    Returns new pair of args and kwargs.
+    """
 
+    arg_index = inspect.getfullargspec(parent_class).args.index(argument_name)
 
-class wccGraph(dcc.Graph):
+    if len(args) > arg_index:  # given as positional argument
+        args = (
+            args[:arg_index]
+            + (modifying_function(args[config_arg_index]),)
+            + args[arg_index + 1 :]
+        )
+    else:
+        if modifying_function(kwargs.get(argument_name)) is not None:
+            kwargs[argument_name] = modifying_function(kwargs.get(argument_name))
+
+    return args, kwargs
+
+class Graph(dcc.Graph):
     def __init__(self, *args, **kwargs):
 
         args, kwargs = argument_modifier(
             dcc.Graph, "config", Graph.populate_config, args, kwargs
         )
+        #print("Graph")
+        #print(args)
+        #print(kwargs)
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -104,30 +130,7 @@ class wccGraph(dcc.Graph):
 
         return config
 
-    def argument_modifier(parent_class, argument_name, modifying_function, args, kwargs):
-        """Intelligently modifies input args and kwargs given to a class __init__ function.
-        * parent_class: The parent class to look for wrt. arguments.
-        * argument_name: The name of the argument to (potentially) change
-        * modifying_function: Reference to a function which should take one value. It is
-                              automatically given the current value of the relevant argument
-                              (None if not given), and should return the new modified value.
-        * args, kwargs: The arguments to be changed. 
-        Returns new pair of args and kwargs.
-        """
 
-        arg_index = inspect.getfullargspec(parent_class).args.index(argument_name)
-
-        if len(args) > arg_index:  # given as positional argument
-            args = (
-                args[:arg_index]
-                + (modifying_function(args[config_arg_index]),)
-                + args[arg_index + 1 :]
-            )
-        else:
-            if modifying_function(kwargs.get(argument_name)) is not None:
-                kwargs[argument_name] = modifying_function(kwargs.get(argument_name))
-
-        return args, kwargs
 
 ############
 class TablePlotter(WebvizPluginABC):
@@ -339,7 +342,7 @@ If feature is requested, the data could also come from a database.
                                 open=True,
                                 children=[
                                     html.Summary(col.lower().capitalize()),
-                                    Select(
+                                    dcc.Dropdown(
                                         id=self.uuid(f"filter-{col}"),
                                         options=[
                                             {"label": i, "value": i} for i in elements
@@ -353,7 +356,8 @@ If feature is requested, the data could also come from a database.
                                             )
                                             if element in elements
                                         ],
-                                        size=min(15, len(elements)),
+                                        #size=min(15, len(elements)),
+                                        multi=True,
                                     ),
                                 ],
                             )
@@ -416,7 +420,7 @@ If feature is requested, the data could also come from a database.
     def layout(self) -> html.Div:
         return html.Div(
             children=[
-                FlexBox(
+                html.Div(
                     children=[
                         html.Div(
                             id=self.uuid("selector-row"),
@@ -511,25 +515,26 @@ If feature is requested, the data could also come from a database.
                         ] = self.column_color_discrete_maps.get(plot_arg)
                 else:
                     div_style.append(self.style_options_div_hidden)
-            print(plotargs)
-            print(plot_type)
-            if plot_type == "bar":
-                return (
-                    wccGraph(
-                        figure=px.bar(data, template=self.plotly_theme, **plotargs)
-                    ),
-                    *div_style,
-                )
-            if plot_type == "parallel_coordinates":
-                print("pouch")
-                return (wccGraph(
-                    figure=px.parallel_coordinates(
-                        data, template=self.plotly_theme, **plotargs
-                    )),
-                    *div_style,
-                )
+            #######JUST USED TO TEST SOME OUTPUTS
+            #print(plotargs)
+            #print(plot_type)
+            #if plot_type == "bar":
+            #    return (
+            #        Graph(
+            #            figure=px.bar(data, template=self.plotly_theme, **plotargs)
+            #        ),
+            #        *div_style,
+            #    )
+            #if plot_type == "parallel_coordinates":
+            #    return (Graph(
+            #        figure=px.parallel_coordinates(
+            #            data, template=self.plotly_theme, **plotargs
+            #        )),
+            #        *div_style,
+            #    )
+            ########################
             return (
-                wccGraph(
+                Graph(
                     figure=plotfunc(data, template=self.plotly_theme, **plotargs)
                 ),
                 *div_style,
@@ -559,40 +564,22 @@ def filter_dataframe(
             df = df.loc[df[col] == filt]
     return df
 
-
-
-
-
-############################################
-if False and not webviz_config.is_reload_process():
-    # When Dash/Flask is started on localhost with hot module reload activated,
-    # we do not want the main process to call expensive component functions in
-    # the layout tree, as the layout tree used on initialization will anyway be called
-    # from the child/restart/reload process.
-    app.layout = html.Div()
-else:
-    app.layout = dcc.Tabs(
-        parent_className="layoutWrapper",
-        content_className="pageWrapper",
-        vertical=True,
-        children=[
-          
-            dcc.Tab(id="logo",
-                className="styledLogo",children=[
-                  TablePlotter(app=app, **{'csv_file': PosixPath('/private/asny/webviz-config/examples/example_data.csv'), 'filter_cols': ['Well', 'Segment', 'Average permeability (D)'], 'plot_options': {'type': 'parallel_coordinates', 'facet_col': 'Well', 'color': 'Segment', 'barmode': 'group'}, 'filter_defaults': {'Well': ['A-1H', 'A-2H', 'C-1H']}, 'column_color_discrete_maps': {'Segment': {'A': '#ff0000', 'B': 'rgb(0,255,0)', 'C': 'blue'}}}).plugin_layout(contact_person={'name': 'Ola Nordmann', 'phone': '+47 12345678', 'email': 'some@email.com'})
-                  ],
-            )],
-    )
+app.layout = dcc.Tabs(
+    parent_className="layoutWrapper",
+    content_className="pageWrapper",
+    vertical=True,
+    children=[
+      
+        dcc.Tab(id="logo",
+            className="styledLogo",children=[
+              TablePlotter(app=app, **{'csv_file': PosixPath('/private/asny/webviz-config/examples/example_data.csv'), 'filter_cols': ['Well', 'Segment', 'Average permeability (D)'], 'plot_options': {'type': 'scatter', 'facet_col': 'Well', 'color': 'Segment', 'barmode': 'group'}, 'filter_defaults': {'Well': ['A-1H', 'A-2H', 'C-1H']}, 'column_color_discrete_maps': {'Segment': {'A': '#ff0000', 'B': 'rgb(0,255,0)', 'C': 'blue'}}}).plugin_layout(contact_person={'name': 'Ola Nordmann', 'phone': '+47 12345678', 'email': 'some@email.com'})
+              ],
+        )],
+)
 
 
 
 if __name__ == "__main__":
-    # This part is ignored when the webviz app is started
-    # using Docker container and uwsgi (e.g. when hosted on Azure).
-    #
-    # It is used only when directly running this script with Python,
-    # which will then initialize a localhost server.
-
     port = webviz_config.utils.get_available_port()
 
     token = webviz_config.LocalhostToken(app.server, port).one_time_token
