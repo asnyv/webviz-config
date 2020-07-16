@@ -8,7 +8,7 @@ from ..common_cache import CACHE
 
 
 class ExamplePortable(WebvizPluginABC):
-    def __init__(self, some_number: int, _skip_rest_portable: bool):
+    def __init__(self, some_number: int, _skip_rest_portable: bool = False):
         super().__init__()
         print("init to win it")
         self.some_number = some_number

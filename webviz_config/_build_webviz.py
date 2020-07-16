@@ -17,7 +17,8 @@ STATIC_FOLDER = os.path.join(os.path.dirname(__file__), "static")
 
 
 def build_webviz(args: argparse.Namespace) -> None:
-
+    t0 = time.time()
+    print(f"start timer {time.time()-t0}")
     if args.theme not in installed_themes:
         raise ValueError(f"Theme `{args.theme}` is not installed.")
 
@@ -48,11 +49,11 @@ def build_webviz(args: argparse.Namespace) -> None:
                 "such that the webviz instance is portable."
                 f"{terminal_colors.END}"
             )
-
+            print(f"start copydata write script {time.time()-t0}")
             write_script(
                 args, build_directory, "copy_data_template.py.jinja2", "copy_data.py"
             )
-
+            print(f"start copydata {time.time()-t0}")
             if subprocess.call(  # nosec
                 ["python", "copy_data.py"], cwd=build_directory
             ):
@@ -71,14 +72,14 @@ def build_webviz(args: argparse.Namespace) -> None:
                 "Finished data extraction. All output saved."
                 f"{terminal_colors.END}"
             )
-
+        print(f"start template script {time.time()-t0}")
         non_default_assets = write_script(
             args, build_directory, "webviz_template.py.jinja2", BUILD_FILENAME
         )
-
+        print(f"start copy assets {time.time()-t0}")
         for asset in non_default_assets:
             shutil.copy(asset, os.path.join(build_directory, "assets"))
-
+        print(f"build time {time.time()-t0}")
         if not args.portable:
             run_webviz(args, build_directory)
 
