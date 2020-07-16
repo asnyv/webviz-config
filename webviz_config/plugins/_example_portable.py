@@ -8,17 +8,32 @@ from ..common_cache import CACHE
 
 
 class ExamplePortable(WebvizPluginABC):
-    def __init__(self, some_number: int):
+    def __init__(self, some_number: int, _skip_rest_portable: bool):
         super().__init__()
-
+        print("init to win it")
         self.some_number = some_number
         self.some_string = "a"
+        if not _skip_rest_portable:
+            print(_skip_rest_portable)
+            self.string = str(
+                input_data_function(
+                    self.some_string, some_number=self.some_number, some_bool=True
+                )
+            )
+        print(CACHE.TIMEOUT)
+        print("end init")
 
     def add_webvizstore(self) -> List[tuple]:
         return [
             (
                 input_data_function,
-                [{"some_string": self.some_string, "some_number": self.some_number}],
+                [
+                    {
+                        "some_string": self.some_string,
+                        "some_number": self.some_number,
+                        "some_bool": True,
+                    }
+                ],
             )
         ]
 

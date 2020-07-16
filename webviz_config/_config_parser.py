@@ -14,7 +14,14 @@ from . import WebvizPluginABC
 from .utils import terminal_colors
 
 warnings.simplefilter("default", DeprecationWarning)
-SPECIAL_ARGS = ["self", "app", "container_settings", "_call_signature", "_imports"]
+SPECIAL_ARGS = [
+    "self",
+    "app",
+    "container_settings",
+    "_call_signature",
+    "_imports",
+    "_skip_rest_portable",
+]
 
 
 def _get_webviz_plugins(module: types.ModuleType) -> list:
@@ -144,10 +151,14 @@ def _call_signature(
             ),
             DeprecationWarning,
         )
-
+    special_args_portable = special_args
+    if "_skip_rest_portable" in argspec.args:
+        special_args += "_skip_rest_portable=False, "
+        special_args_portable += "_skip_rest_portable=True, "
     return (
         f"{module_name}.{plugin_name}({special_args}**{kwargs})",
         f"plugin_layout(contact_person={contact_person})",
+        f"{module_name}.{plugin_name}({special_args_portable}**{kwargs})",
     )
 
 

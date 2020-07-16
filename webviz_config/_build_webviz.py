@@ -64,7 +64,7 @@ def build_webviz(args: argparse.Namespace) -> None:
                     "error message and traceback above"
                 )
 
-            os.remove(os.path.join(build_directory, "copy_data.py"))
+            # os.remove(os.path.join(build_directory, "copy_data.py"))
 
             print(
                 f"{terminal_colors.GREEN}{terminal_colors.BOLD}"

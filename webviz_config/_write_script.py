@@ -35,7 +35,6 @@ def write_script(
     )
 
     template = template_environment.get_template(template_filename)
-
     with open(os.path.join(build_directory, output_filename), "w") as filehandle:
         filehandle.write(template.render(configuration))
 
