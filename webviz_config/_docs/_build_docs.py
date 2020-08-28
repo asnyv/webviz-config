@@ -16,7 +16,7 @@ import inspect
 import pathlib
 from importlib import import_module
 from collections import defaultdict
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List
 
 import pkg_resources
 import jinja2
@@ -52,7 +52,7 @@ def _document_plugin(plugin: Tuple[str, Any]) -> PluginInfo:
 
     name, reference = plugin
     docstring = reference.__doc__ if reference.__doc__ is not None else ""
-    docstring_parts = docstring.strip().split("\n---\n")
+    docstring_parts = _split_docstring(docstring)
     argspec = inspect.getfullargspec(reference.__init__)
     module = inspect.getmodule(reference)
     subpackage = inspect.getmodule(module).__package__  # type: ignore
@@ -162,3 +162,23 @@ def build_docs(build_directory: pathlib.Path) -> None:
     (build_directory / "sidebar.md").write_text(
         template.render({"packages": plugin_documentation.keys()})
     )
+
+
+def _split_docstring(docstring: str) -> List[str]:
+    """Divide docstring by splitting on ---, also unindent
+    in case of indented docstrings (similar to this one)
+    """
+    lines = docstring.strip().split("\n")
+    if len(lines) == 1:
+        return lines
+
+    indent_spaces = 1000  # far beyond max width
+    for line in lines[1:]:
+        if line.strip() == "":
+            continue
+        indent_spaces = min(indent_spaces, (len(line) - len(line.lstrip())))
+    unindented_lines = [lines[0]] + [
+        line.strip() if line.strip() == "" else line[indent_spaces:]
+        for line in lines[1:]
+    ]
+    return "\n".join(unindented_lines).split("\n---\n")
